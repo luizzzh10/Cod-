@@ -1,51 +1,216 @@
-# Prerequisites
-*.d
+#include <stdio.h>
+#include <string.h>
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+struct reg
+{
+    char nome[20];
+    char tel[20];
+    char email[20];
+    char status;
+};
 
-# Linker output
-*.ilk
-*.map
-*.exp
+int tamanho(FILE *);
+void cadastrar(FILE *);
+void consultar(FILE *);
+void geraarqtxt(FILE *);
+void excluir(FILE *);
 
-# Precompiled Headers
-*.gch
-*.pch
+int main()
+{
+    int op;
+    FILE *arq;
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+    if ((arq = fopen("dados1.dat", "rb+")) == NULL)
+    {
+        if ((arq = fopen("dados1.dat", "wb+")) == NULL)
+        {
+            printf("Falha ao abrir o arquivo!\n");
+            system("pause");
+        }
+    }
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+    do
+    {
+        system("CLS");
+        printf("\n======= AGENDA ======= \n");
+        printf("1. Cadastrar\n");
+        printf("2. Consultar por código\n");
+        printf("3. Gerar arquivo\n");
+        printf("4. Excluir registro\n");
+        printf("5. Sair\n");
+        printf("=========== Contatos: %d =\n", tamanho(arq));
+        printf("Opcao: ");
+        scanf("%d", &op);
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+        switch (op)
+        {
+        case 1:
+            cadastrar(arq);
+            break;
+        case 2:
+            consultar(arq);
+            break;
+        case 3:
+            geraarqtxt(arq);
+            break;
+        case 4:
+            excluir(arq);
+            break;
+        case 5:
+            fclose(arq);
+            break;
+        }
+    } while (op != 5);
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+    printf("Programa encerrado.\n");
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
+    return 0;
+}
+
+void cadastrar(FILE *arq)
+{
+    struct reg contato;
+    char confirma;
+    contato.status = ' ';
+
+    fflush(stdin);
+
+    printf("Cadastrando novo registro:\n");
+    printf("\nNumero do registro: %d\n", tamanho(arq) + 1);
+    printf("Nome: ");
+    getchar();
+    gets(contato.nome);
+    printf("Telefone: ");
+    gets(contato.tel);
+    printf("E-mail: ");
+    gets(contato.email);
+    printf("\nConfirma <s/n>: ");
+    fflush(stdin);
+    scanf("%c", &confirma);
+
+    if (toupper(confirma) == 'S')
+    {
+        printf("\nGravando...\n\n");
+        fseek(arq, 0, SEEK_END);
+        fwrite(&contato, sizeof(struct reg), 1, arq);
+    }
+
+    system("pause");
+}
+
+void consultar(FILE *arq)
+{
+    struct reg contato;
+    int nr;
+
+    printf("\nConsulta pelo código\n");
+    printf("\nInforme o Código: ");
+    scanf("%d", &nr);
+
+    if ((nr <= tamanho(arq)) && (nr > 0))
+    {
+        fseek(arq, (nr - 1) * sizeof(struct reg), SEEK_SET);
+        fread(&contato, sizeof(struct reg), 1, arq);
+
+        if (contato.status == ' ')
+        {
+            printf("\nNome: %s", contato.nome);
+            printf("\nTelefone: %s", contato.tel);
+            printf("\nE-mail: %s\n\n", contato.email);
+        }
+        else
+        {
+            printf("\nRegistro excluído! \n");
+        }
+    }
+    else
+    {
+        printf("\nNúmero de registro inválido!\n");
+    }
+
+    system("pause");
+}
+
+void geraarqtxt(FILE *arq)
+{
+    char nomearq[20];
+    printf("Nome do arquivo texto: ");
+    scanf("%s", nomearq);
+    strcat(nomearq, ".txt");
+    FILE *arqtxt = fopen(nomearq, "w");
+
+    if (!arqtxt)
+    {
+        printf("Não foi possível criar esse arquivo!\n");
+        system("pause");
+    }
+
+    fprintf(arqtxt, "Nome                Telefone    E-mail                   Status\n");
+    fprintf(arqtxt, "================================================================\n");
+
+    int nr;
+    struct reg contato;
+
+    for (nr = 0; nr < tamanho(arq); nr++)
+    {
+        fseek(arq, nr * sizeof(struct reg), SEEK_SET);
+        fread(&contato, sizeof(struct reg), 1, arq);
+        fprintf(arqtxt, "%-20s%-12s%-25s- %c\n", contato.nome, contato.tel, contato.email, contato.status);
+    }
+
+    fprintf(arqtxt, "================================================================\n");
+    fclose(arqtxt);
+}
+
+void excluir(FILE *arq)
+{
+    struct reg contato;
+    char confirma;
+    int nr;
+
+    printf("\nInforme o código do registro para excluir: ");
+    scanf("%d", &nr);
+
+    if ((nr <= tamanho(arq)) && (nr > 0))
+    {
+        fseek(arq, (nr - 1) * sizeof(struct reg), SEEK_SET);
+        fread(&contato, sizeof(struct reg), 1, arq);
+
+        if (contato.status == ' ')
+        {
+            printf("\nNome: %s", contato.nome);
+            printf("\nTelefone: %s", contato.tel);
+            printf("\nE-mail: %s\n", contato.email);
+            printf("\nConfirma a exclusão: <s/n>\n");
+            getchar();
+            scanf("%c", &confirma);
+
+            if (toupper(confirma) == 'S')
+            {
+                printf("\nExcluindo...\n\n");
+                fseek(arq, (nr - 1) * sizeof(struct reg), SEEK_SET);
+                contato.status = '*';
+                fwrite(&contato, sizeof(struct reg), 1, arq);
+            }
+        }
+        else
+        {
+            printf("Registro inexistente! \n");
+        }
+    }
+    else
+    {
+        printf("\nNúmero de registro inválido!\n");
+    }
+
+    system("pause");
+}
+
+int tamanho(FILE *arq)
+{
+    fseek(arq, 0, SEEK_END);
+    return ftell(arq) / sizeof(struct reg);
+}
 modules.order
 Module.symvers
 Mkfile.old
